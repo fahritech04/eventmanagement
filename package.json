@@ -1,0 +1,11 @@
+{
+  "name": "eventpro-saas",
+  "version": "1.0.0",
+  "description": "Multi-Tenant Event Management SaaS",
+  "scripts": {
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "dev": "start cmd /k \"cd server && npm run dev\" && timeout /t 2 && cd client && npm run dev",
+    "install:all": "cd server && npm install && cd ../client && npm install"
+  }
+}
