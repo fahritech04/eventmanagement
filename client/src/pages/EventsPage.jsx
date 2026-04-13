@@ -103,13 +103,21 @@ export default function EventsPage() {
 
       <div className="events-grid">
         {events.map(event => (
-          <div key={event.id} className={`event-card status-${event.status}`} onClick={() => openEdit(event)}>
+          <div key={event.id} className={`event-card status-${event.status}`} onClick={() => navigate(`/events/${event.id}`)}>
             <div className="event-card-header">
               <div>
                 <h3>{event.title}</h3>
                 <div className="event-card-client">{event.client_name}</div>
               </div>
-              <span className={`badge ${statusBadgeClass(event.status)}`}>{statusLabels[event.status]}</span>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span className={`badge ${statusBadgeClass(event.status)}`}>{statusLabels[event.status]}</span>
+                <button 
+                  className="btn btn-secondary btn-sm" 
+                  onClick={(e) => { e.stopPropagation(); openEdit(event); }}
+                >
+                  Edit
+                </button>
+              </div>
             </div>
 
             <div className="event-card-meta">

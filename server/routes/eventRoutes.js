@@ -1,5 +1,5 @@
 const express = require('express');
-const { getEvents, getEvent, createEvent, updateEvent, deleteEvent } = require('../controllers/eventController');
+const { getEvents, getEvent, createEvent, updateEvent, deleteEvent, assignVendorToEvent } = require('../controllers/eventController');
 const { auth } = require('../middleware/auth');
 const { tenantContext } = require('../middleware/tenantContext');
 
@@ -12,5 +12,6 @@ router.get('/:id', getEvent);
 router.post('/', createEvent);
 router.put('/:id', updateEvent);
 router.delete('/:id', deleteEvent);
+router.post('/:id/vendors', assignVendorToEvent);
 
 module.exports = router;

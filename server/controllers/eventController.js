@@ -1,6 +1,32 @@
 const { queryWithTenant } = require('../config/db');
 const { v4: uuidv4 } = require('uuid');
 
+// Assign vendor to event
+const assignVendorToEvent = async (req, res, next) => {
+  try {
+    const { id: event_id } = req.params;
+    const { vendor_id, agreed_price, notes } = req.body;
+
+    if (!vendor_id) {
+      return res.status(400).json({ error: 'Vendor ID wajib diisi.' });
+    }
+
+    const id = uuidv4();
+    const result = await queryWithTenant(req.user.tenantId,
+      `INSERT INTO event_vendors (id, tenant_id, event_id, vendor_id, agreed_price, payment_status, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [id, req.user.tenantId, event_id, vendor_id, agreed_price || 0, 'pending', notes]
+    );
+
+    res.status(201).json({ message: 'Vendor berhasil ditambahkan ke event!', assignment: result.rows[0] });
+  } catch (error) {
+    if (error.code === '23505') {
+      return res.status(400).json({ error: 'Vendor ini sudah ditambahkan ke event.' });
+    }
+    next(error);
+  }
+};
+
 // Get all events
 const getEvents = async (req, res, next) => {
   try {
@@ -146,4 +172,4 @@ const deleteEvent = async (req, res, next) => {
   }
 };
 
-module.exports = { getEvents, getEvent, createEvent, updateEvent, deleteEvent };
+module.exports = { getEvents, getEvent, createEvent, updateEvent, deleteEvent, assignVendorToEvent };

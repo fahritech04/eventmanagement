@@ -5,6 +5,7 @@ import Sidebar from './components/Sidebar';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import EventsPage from './pages/EventsPage';
+import EventDetailPage from './pages/EventDetailPage';
 import VendorsPage from './pages/VendorsPage';
 import DeadlinesPage from './pages/DeadlinesPage';
 import PaymentsPage from './pages/PaymentsPage';
@@ -65,6 +66,7 @@ function App() {
           <Route element={<ProtectedLayout />}>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/events" element={<EventsPage />} />
+            <Route path="/events/:id" element={<EventDetailPage />} />
             <Route path="/vendors" element={<VendorsPage />} />
             <Route path="/deadlines" element={<DeadlinesPage />} />
             <Route path="/payments" element={<PaymentsPage />} />
