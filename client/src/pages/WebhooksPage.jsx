@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { formatDateTime } from '../services/helpers';
-import { Plus, X, Settings, Send, CheckCircle, XCircle, Zap } from 'lucide-react';
+import { Globe, Plus, Trash2, CheckCircle, AlertTriangle, Play, RefreshCw, Server, Search, X, Settings, Send, XCircle, Zap } from 'lucide-react';
+import Modal from '../components/ui/Modal';
+import EmptyState from '../components/ui/EmptyState';
+import Badge from '../components/ui/Badge';
 
 export default function WebhooksPage() {
   const [configs, setConfigs] = useState([]);
@@ -116,7 +119,7 @@ export default function WebhooksPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                    <span className={`badge ${c.is_active ? 'badge-success' : 'badge-muted'}`}>{c.is_active ? 'Aktif' : 'Nonaktif'}</span>
+                    <Badge status={c.is_active ? 'success' : 'muted'} label={c.is_active ? 'Aktif' : 'Nonaktif'} type="generic" />
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Dibuat: {formatDateTime(c.created_at)}</span>
                   </div>
                   <div style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'var(--accent-secondary)', background: 'rgba(139,92,246,0.08)', padding: '8px 12px', borderRadius: 'var(--radius-sm)', marginBottom: 10, wordBreak: 'break-all' }}>
@@ -124,7 +127,7 @@ export default function WebhooksPage() {
                   </div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {c.events_subscribed?.map(e => (
-                      <span key={e} className="badge badge-info" style={{ fontSize: '0.65rem' }}>{eventTypeLabels[e] || e}</span>
+                      <Badge key={e} status="info" label={eventTypeLabels[e] || e} type="generic" />
                     ))}
                   </div>
                 </div>
@@ -137,11 +140,11 @@ export default function WebhooksPage() {
             </div>
           ))}
           {configs.length === 0 && (
-            <div className="card empty-state">
-              <Settings size={48} />
-              <h3>Belum ada webhook</h3>
-              <p>Tambahkan URL webhook untuk menerima notifikasi otomatis</p>
-            </div>
+            <EmptyState 
+              icon={Settings} 
+              title="Belum ada webhook" 
+              description="Tambahkan URL webhook untuk menerima notifikasi otomatis" 
+            />
           )}
         </div>
       )}
@@ -163,53 +166,51 @@ export default function WebhooksPage() {
                 {logs.map(l => (
                   <tr key={l.id}>
                     <td style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{formatDateTime(l.sent_at)}</td>
-                    <td><span className="badge badge-info" style={{ fontSize: '0.65rem' }}>{eventTypeLabels[l.event_type] || l.event_type}</span></td>
+                    <td><Badge status="info" label={eventTypeLabels[l.event_type] || l.event_type} type="generic" /></td>
                     <td style={{ fontSize: '0.72rem', fontFamily: 'monospace', color: 'var(--text-tertiary)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.webhook_url}</td>
                     <td>
-                      <span className={`badge ${l.status_code >= 200 && l.status_code < 300 ? 'badge-success' : 'badge-danger'}`}>
-                        {l.status_code || 'Error'}
-                      </span>
+                      <Badge status={l.status_code >= 200 && l.status_code < 300 ? 'success' : 'danger'} label={l.status_code >= 200 && l.status_code < 300 ? 'Success' : 'Failed'} type="generic" />
                     </td>
                     <td style={{ fontSize: '0.75rem', color: l.error ? 'var(--danger)' : 'var(--text-tertiary)' }}>{l.error || l.response || '-'}</td>
                   </tr>
                 ))}
-                {logs.length === 0 && (
-                  <tr><td colSpan={5} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>Belum ada log</td></tr>
-                )}
               </tbody>
             </table>
+            {logs.length === 0 && (
+              <EmptyState 
+                icon={Server} 
+                title="Tidak ada aktivitas webhook" 
+                description="Belum ada webhook yang terkirim." 
+              />
+            )}
           </div>
         </div>
       )}
 
-      {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3 className="modal-title">Tambah Webhook</h3>
-              <button className="modal-close" onClick={() => setShowModal(false)}><X size={20} /></button>
+      <Modal 
+        isOpen={showModal} 
+        onClose={() => setShowModal(false)} 
+        title="Tambah Webhook"
+      >
+        <form onSubmit={handleSubmit}>
+          <div className="modal-body">
+            <div className="form-group">
+              <label className="form-label">URL Webhook *</label>
+              <input className="form-input" value={form.url} onChange={e => setForm(p => ({...p, url: e.target.value}))} required placeholder="https://n8n.example.com/webhook/xxx" />
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4 }}>URL dari n8n Webhook Trigger node atau tool automasi lainnya</div>
             </div>
-            <form onSubmit={handleSubmit}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label className="form-label">URL Webhook *</label>
-                  <input className="form-input" value={form.url} onChange={e => setForm(p => ({...p, url: e.target.value}))} required placeholder="https://n8n.example.com/webhook/xxx" />
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4 }}>URL dari n8n Webhook Trigger node atau tool automasi lainnya</div>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Secret (opsional)</label>
-                  <input className="form-input" value={form.secret} onChange={e => setForm(p => ({...p, secret: e.target.value}))} placeholder="webhook-secret-key" />
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4 }}>Untuk verifikasi HMAC signature di sisi penerima</div>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Batal</button>
-                <button type="submit" className="btn btn-primary">Simpan</button>
-              </div>
-            </form>
+            <div className="form-group">
+              <label className="form-label">Secret (opsional)</label>
+              <input className="form-input" value={form.secret} onChange={e => setForm(p => ({...p, secret: e.target.value}))} placeholder="webhook-secret-key" />
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4 }}>Untuk verifikasi HMAC signature di sisi penerima</div>
+            </div>
           </div>
-        </div>
-      )}
+          <div className="modal-footer">
+            <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Batal</button>
+            <button type="submit" className="btn btn-primary">Simpan</button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

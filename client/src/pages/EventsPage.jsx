@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { formatCurrency, formatDate, formatTime, statusLabels, statusBadgeClass, eventTypeLabels } from '../services/helpers';
-import { Plus, Search, Calendar, MapPin, Users, Clock, Filter, X } from 'lucide-react';
+import { formatCurrency, formatDate, formatTime, eventTypeLabels } from '../services/helpers';
+import { Plus, Search, Calendar, MapPin, Users, Clock } from 'lucide-react';
+import Modal from '../components/ui/Modal';
+import EmptyState from '../components/ui/EmptyState';
+import Badge from '../components/ui/Badge';
 
 export default function EventsPage() {
   const [events, setEvents] = useState([]);
@@ -110,7 +113,7 @@ export default function EventsPage() {
                 <div className="event-card-client">{event.client_name}</div>
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <span className={`badge ${statusBadgeClass(event.status)}`}>{statusLabels[event.status]}</span>
+                <Badge status={event.status} />
                 <button 
                   className="btn btn-secondary btn-sm" 
                   onClick={(e) => { e.stopPropagation(); openEdit(event); }}
@@ -138,24 +141,21 @@ export default function EventsPage() {
           </div>
         ))}
         {events.length === 0 && (
-          <div className="empty-state" style={{ gridColumn: '1 / -1' }}>
-            <Calendar size={48} />
-            <h3>Belum ada event</h3>
-            <p>Klik "Tambah Event" untuk membuat event baru</p>
-          </div>
+          <EmptyState 
+            icon={Calendar} 
+            title="Belum ada event" 
+            description="Klik 'Tambah Event' untuk membuat event baru" 
+          />
         )}
       </div>
 
-      {/* Modal */}
-      {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 600 }}>
-            <div className="modal-header">
-              <h3 className="modal-title">{editEvent ? 'Edit Event' : 'Tambah Event Baru'}</h3>
-              <button className="modal-close" onClick={() => setShowModal(false)}><X size={20} /></button>
-            </div>
-            <form onSubmit={handleSubmit}>
-              <div className="modal-body">
+      <Modal 
+        isOpen={showModal} 
+        onClose={() => setShowModal(false)} 
+        title={editEvent ? 'Edit Event' : 'Tambah Event Baru'}
+      >
+        <form onSubmit={handleSubmit}>
+          <div className="modal-body">
                 <div className="form-group">
                   <label className="form-label">Judul Event *</label>
                   <input className="form-input" value={form.title} onChange={e => setForm(p => ({...p, title: e.target.value}))} required placeholder="Pernikahan Andi & Maya" />
@@ -214,17 +214,15 @@ export default function EventsPage() {
                     </select>
                   </div>
                 )}
-              </div>
-              <div className="modal-footer">
-                {editEvent && <button type="button" className="btn btn-danger btn-sm" onClick={() => { handleDelete(editEvent.id); setShowModal(false); }}>Hapus</button>}
-                <div style={{ flex: 1 }} />
-                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Batal</button>
-                <button type="submit" className="btn btn-primary">{editEvent ? 'Simpan' : 'Buat Event'}</button>
-              </div>
-            </form>
           </div>
-        </div>
-      )}
+          <div className="modal-footer">
+            {editEvent && <button type="button" className="btn btn-danger btn-sm" onClick={() => { handleDelete(editEvent.id); setShowModal(false); }}>Hapus</button>}
+            <div style={{ flex: 1 }} />
+            <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Batal</button>
+            <button type="submit" className="btn btn-primary">{editEvent ? 'Simpan' : 'Buat Event'}</button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

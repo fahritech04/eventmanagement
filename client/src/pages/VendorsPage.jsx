@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { vendorCategoryLabels } from '../services/helpers';
-import { Plus, Search, Star, X, Phone, Mail, MapPin } from 'lucide-react';
+import { Plus, Search, Star, X, Users } from 'lucide-react';
+import Modal from '../components/ui/Modal';
+import EmptyState from '../components/ui/EmptyState';
+import Badge from '../components/ui/Badge';
 
 export default function VendorsPage() {
   const [vendors, setVendors] = useState([]);
@@ -107,7 +110,7 @@ export default function VendorsPage() {
                     <div>{v.name}</div>
                     {v.description && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>{v.description.substring(0, 50)}...</div>}
                   </td>
-                  <td><span className="badge badge-purple">{vendorCategoryLabels[v.category] || v.category}</span></td>
+                  <td><Badge status={v.category} label={vendorCategoryLabels[v.category] || v.category} /></td>
                   <td>{v.contact_person || '-'}</td>
                   <td style={{ fontSize: '0.8rem' }}>{v.phone || '-'}</td>
                   <td>{renderStars(v.rating)}</td>
@@ -120,66 +123,68 @@ export default function VendorsPage() {
                   </td>
                 </tr>
               ))}
-              {vendors.length === 0 && (
-                <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>Belum ada vendor</td></tr>
-              )}
             </tbody>
           </table>
+          {vendors.length === 0 && (
+            <EmptyState 
+              icon={Users} 
+              title="Belum ada vendor" 
+              description="Klik 'Tambah Vendor' untuk mendaftarkan vendor baru" 
+            />
+          )}
         </div>
       </div>
 
-      {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3 className="modal-title">{editVendor ? 'Edit Vendor' : 'Tambah Vendor'}</h3>
-              <button className="modal-close" onClick={() => setShowModal(false)}><X size={20} /></button>
+      <Modal 
+        isOpen={showModal} 
+        onClose={() => setShowModal(false)} 
+        title={editVendor ? 'Edit Vendor' : 'Tambah Vendor Baru'}
+      >
+        <form onSubmit={handleSubmit}>
+          <div className="modal-body">
+            <div className="form-group">
+              <label className="form-label">Nama Vendor *</label>
+              <input className="form-input" value={form.name} onChange={e => setForm(p => ({...p, name: e.target.value}))} required />
             </div>
-            <form onSubmit={handleSubmit}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label className="form-label">Nama Vendor *</label>
-                  <input className="form-input" value={form.name} onChange={e => setForm(p => ({...p, name: e.target.value}))} required />
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="form-label">Kategori *</label>
-                    <select className="form-input" value={form.category} onChange={e => setForm(p => ({...p, category: e.target.value}))}>
-                      {Object.entries(vendorCategoryLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Rating (0-5)</label>
-                    <input type="number" step="0.1" min="0" max="5" className="form-input" value={form.rating} onChange={e => setForm(p => ({...p, rating: e.target.value}))} />
-                  </div>
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="form-label">Kontak Person</label>
-                    <input className="form-input" value={form.contact_person} onChange={e => setForm(p => ({...p, contact_person: e.target.value}))} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Telepon</label>
-                    <input className="form-input" value={form.phone} onChange={e => setForm(p => ({...p, phone: e.target.value}))} />
-                  </div>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Email</label>
-                  <input type="email" className="form-input" value={form.email} onChange={e => setForm(p => ({...p, email: e.target.value}))} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Deskripsi</label>
-                  <textarea className="form-input" value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} rows={2} />
-                </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Kategori *</label>
+                <select className="form-input" value={form.category} onChange={e => setForm(p => ({...p, category: e.target.value}))}>
+                  {Object.entries(vendorCategoryLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
               </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Batal</button>
-                <button type="submit" className="btn btn-primary">{editVendor ? 'Simpan' : 'Tambah'}</button>
+              <div className="form-group">
+                <label className="form-label">Rating (0-5)</label>
+                <input type="number" step="0.1" min="0" max="5" className="form-input" value={form.rating} onChange={e => setForm(p => ({...p, rating: e.target.value}))} />
               </div>
-            </form>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Kontak Person</label>
+                <input className="form-input" value={form.contact_person} onChange={e => setForm(p => ({...p, contact_person: e.target.value}))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Telepon</label>
+                <input className="form-input" value={form.phone} onChange={e => setForm(p => ({...p, phone: e.target.value}))} />
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Email</label>
+              <input type="email" className="form-input" value={form.email} onChange={e => setForm(p => ({...p, email: e.target.value}))} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Deskripsi</label>
+              <textarea className="form-input" value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} rows={2} />
+            </div>
           </div>
-        </div>
-      )}
+          <div className="modal-footer">
+            {editVendor && <button type="button" className="btn btn-danger btn-sm" onClick={() => { handleDelete(editVendor.id); setShowModal(false); }}>Hapus</button>}
+            <div style={{ flex: 1 }} />
+            <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Batal</button>
+            <button type="submit" className="btn btn-primary">{editVendor ? 'Simpan' : 'Tambah Vendor'}</button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

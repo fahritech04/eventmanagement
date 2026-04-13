@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
-import { formatDateTime, getDeadlineUrgency, getDeadlineTimeLabel, statusLabels, statusBadgeClass, priorityLabels } from '../services/helpers';
-import { Plus, Search, X, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
+import { formatDateTime, getDeadlineUrgency, getDeadlineTimeLabel, statusBadgeClass, priorityLabels } from '../services/helpers';
+import { Plus, Clock, CheckCircle } from 'lucide-react';
+import Modal from '../components/ui/Modal';
+import EmptyState from '../components/ui/EmptyState';
+import Badge from '../components/ui/Badge';
 
 export default function DeadlinesPage() {
   const [deadlines, setDeadlines] = useState([]);
@@ -69,7 +72,6 @@ export default function DeadlinesPage() {
 
   if (loading) return <div className="loading-spinner"><div className="spinner" /></div>;
 
-  // Group by urgency
   const grouped = { overdue: [], urgent: [], soon: [], ontrack: [], completed: [] };
   deadlines.forEach(d => {
     const urgency = getDeadlineUrgency(d.due_date, d.status);
@@ -144,7 +146,7 @@ export default function DeadlinesPage() {
                         {d.title}
                       </div>
                       <div className="deadline-item-event">
-                        {d.event_title} · {d.assigned_to || '-'} · <span className={`badge ${statusBadgeClass(d.priority)}`} style={{ fontSize: '0.65rem' }}>{priorityLabels[d.priority]}</span>
+                        {d.event_title} · {d.assigned_to || '-'} · <Badge className={statusBadgeClass(d.priority)}>{priorityLabels[d.priority]}</Badge>
                       </div>
                     </div>
                     <div className="deadline-item-time" style={{
@@ -162,74 +164,62 @@ export default function DeadlinesPage() {
       })}
 
       {deadlines.length === 0 && (
-        <div className="card empty-state">
-          <Clock size={48} />
-          <h3>Belum ada deadline</h3>
-          <p>Klik "Tambah Deadline" untuk membuat deadline baru</p>
-        </div>
+        <EmptyState icon={Clock} title="Belum ada deadline" description="Klik 'Tambah Deadline' untuk membuat deadline baru" />
       )}
 
-      {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3 className="modal-title">{editItem ? 'Edit Deadline' : 'Tambah Deadline'}</h3>
-              <button className="modal-close" onClick={() => setShowModal(false)}><X size={20} /></button>
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editItem ? 'Edit Deadline' : 'Tambah Deadline'}>
+        <form onSubmit={handleSubmit}>
+          <div className="modal-body">
+            <div className="form-group">
+              <label className="form-label">Event *</label>
+              <select className="form-input" value={form.event_id} onChange={e => setForm(p => ({...p, event_id: e.target.value}))} required>
+                <option value="">Pilih event</option>
+                {events.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
+              </select>
             </div>
-            <form onSubmit={handleSubmit}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label className="form-label">Event *</label>
-                  <select className="form-input" value={form.event_id} onChange={e => setForm(p => ({...p, event_id: e.target.value}))} required>
-                    <option value="">Pilih event</option>
-                    {events.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Judul Deadline *</label>
-                  <input className="form-input" value={form.title} onChange={e => setForm(p => ({...p, title: e.target.value}))} required />
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="form-label">Jatuh Tempo *</label>
-                    <input type="datetime-local" className="form-input" value={form.due_date} onChange={e => setForm(p => ({...p, due_date: e.target.value}))} required />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Prioritas</label>
-                    <select className="form-input" value={form.priority} onChange={e => setForm(p => ({...p, priority: e.target.value}))}>
-                      {Object.entries(priorityLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Ditugaskan ke</label>
-                  <input className="form-input" value={form.assigned_to} onChange={e => setForm(p => ({...p, assigned_to: e.target.value}))} placeholder="Nama penanggung jawab" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Deskripsi</label>
-                  <textarea className="form-input" value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} rows={2} />
-                </div>
-                {editItem && (
-                  <div className="form-group">
-                    <label className="form-label">Status</label>
-                    <select className="form-input" value={form.status} onChange={e => setForm(p => ({...p, status: e.target.value}))}>
-                      <option value="pending">Menunggu</option>
-                      <option value="in_progress">Berlangsung</option>
-                      <option value="completed">Selesai</option>
-                    </select>
-                  </div>
-                )}
+            <div className="form-group">
+              <label className="form-label">Judul Deadline *</label>
+              <input className="form-input" value={form.title} onChange={e => setForm(p => ({...p, title: e.target.value}))} required />
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Jatuh Tempo *</label>
+                <input type="datetime-local" className="form-input" value={form.due_date} onChange={e => setForm(p => ({...p, due_date: e.target.value}))} required />
               </div>
-              <div className="modal-footer">
-                {editItem && <button type="button" className="btn btn-danger btn-sm" onClick={() => { handleDelete(editItem.id); setShowModal(false); }}>Hapus</button>}
-                <div style={{ flex: 1 }} />
-                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Batal</button>
-                <button type="submit" className="btn btn-primary">{editItem ? 'Simpan' : 'Tambah'}</button>
+              <div className="form-group">
+                <label className="form-label">Prioritas</label>
+                <select className="form-input" value={form.priority} onChange={e => setForm(p => ({...p, priority: e.target.value}))}>
+                  {Object.entries(priorityLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
               </div>
-            </form>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Ditugaskan ke</label>
+              <input className="form-input" value={form.assigned_to} onChange={e => setForm(p => ({...p, assigned_to: e.target.value}))} placeholder="Nama penanggung jawab" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Deskripsi</label>
+              <textarea className="form-input" value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} rows={2} />
+            </div>
+            {editItem && (
+              <div className="form-group">
+                <label className="form-label">Status</label>
+                <select className="form-input" value={form.status} onChange={e => setForm(p => ({...p, status: e.target.value}))}>
+                  <option value="pending">Menunggu</option>
+                  <option value="in_progress">Berlangsung</option>
+                  <option value="completed">Selesai</option>
+                </select>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+          <div className="modal-footer">
+            {editItem && <button type="button" className="btn btn-danger btn-sm" onClick={() => { handleDelete(editItem.id); setShowModal(false); }}>Hapus</button>}
+            <div style={{ flex: 1 }} />
+            <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Batal</button>
+            <button type="submit" className="btn btn-primary">{editItem ? 'Simpan' : 'Tambah'}</button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

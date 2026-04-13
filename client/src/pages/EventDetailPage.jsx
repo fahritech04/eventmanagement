@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { formatCurrency, formatDate, formatTime, statusLabels, statusBadgeClass, getDeadlineTimeLabel, getDeadlineUrgency } from '../services/helpers';
-import { ArrowLeft, Calendar, MapPin, Phone, Mail, Clock, CreditCard, MessageSquare, Users, Plus, X } from 'lucide-react';
+import { formatCurrency, formatDate, formatTime, getDeadlineTimeLabel, getDeadlineUrgency } from '../services/helpers';
+import { ArrowLeft, Calendar, MapPin, Phone, Mail, Clock, CreditCard, MessageSquare, Users, Plus } from 'lucide-react';
+import Modal from '../components/ui/Modal';
+import EmptyState from '../components/ui/EmptyState';
+import Badge from '../components/ui/Badge';
 
 export default function EventDetailPage() {
   const { id } = useParams();
@@ -81,7 +84,7 @@ export default function EventDetailPage() {
               <ArrowLeft size={18} />
             </button>
             <h1 className="page-title" style={{ margin: 0 }}>{event.title}</h1>
-            <span className={`badge ${statusBadgeClass(event.status)}`}>{statusLabels[event.status]}</span>
+            <Badge status={event.status} />
           </div>
           <p className="page-subtitle" style={{ marginLeft: 44 }}>{event.client_name} · {event.client_phone}</p>
         </div>
@@ -138,13 +141,13 @@ export default function EventDetailPage() {
                         <td><span className="badge badge-purple">{v.category}</span></td>
                         <td>{v.vendor_phone || '-'}</td>
                         <td style={{ fontFamily: 'Outfit', fontWeight: 600 }}>{formatCurrency(v.agreed_price)}</td>
-                        <td><span className={`badge ${statusBadgeClass(v.payment_status)}`}>{statusLabels[v.payment_status] || v.payment_status}</span></td>
+                        <td><Badge status={v.payment_status} /></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-            ) : <div className="empty-state"><Users size={32} /><p>Belum ada vendor yang ditambahkan.</p></div>}
+            ) : <EmptyState icon={Users} description="Belum ada vendor yang ditambahkan." />}
           </div>
         )}
 
@@ -172,7 +175,7 @@ export default function EventDetailPage() {
                   );
                 })}
               </div>
-            ) : <div className="empty-state"><Clock size={32} /><p>Belum ada deadline untuk event ini.</p></div>}
+            ) : <EmptyState icon={Clock} description="Belum ada deadline untuk event ini." />}
           </div>
         )}
 
@@ -194,13 +197,13 @@ export default function EventDetailPage() {
                        <td style={{ fontSize: '0.85rem' }}>{formatDate(p.payment_date)}</td>
                        <td><span className="badge badge-muted">{p.payment_type}</span></td>
                        <td style={{ fontFamily: 'Outfit', fontWeight: 600 }}>{formatCurrency(p.amount)}</td>
-                       <td><span className={`badge ${statusBadgeClass(p.status)}`}>{statusLabels[p.status] || p.status}</span></td>
+                       <td><Badge status={p.status} /></td>
                      </tr>
                    ))}
                  </tbody>
                </table>
              </div>
-            ) : <div className="empty-state"><CreditCard size={32} /><p>Belum ada riwayat pembayaran.</p></div>}
+            ) : <EmptyState icon={CreditCard} description="Belum ada riwayat pembayaran." />}
           </div>
         )}
 
@@ -221,7 +224,7 @@ export default function EventDetailPage() {
                      <div style={{ flex: 1 }}>
                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                          <div style={{ fontWeight: 600 }}>{m.title}</div>
-                         <span className={`badge ${statusBadgeClass(m.status)}`}>{statusLabels[m.status] || m.status}</span>
+                         <Badge status={m.status} />
                        </div>
                        <div style={{ display: 'flex', gap: 12, marginTop: 8, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                          {m.location && <span style={{ display: 'flex', gap: 4, alignItems: 'center' }}><MapPin size={12}/>{m.location}</span>}
@@ -232,25 +235,23 @@ export default function EventDetailPage() {
                    </div>
                  ))}
                </div>
-            ) : <div className="empty-state"><MessageSquare size={32} /><p>Belum ada meeting terjadwal.</p></div>}
+            ) : <EmptyState icon={MessageSquare} description="Belum ada meeting terjadwal." />}
           </div>
         )}
       </div>
 
-      {modalType && (
-        <div className="modal-overlay" onClick={handleCloseModal}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3 className="modal-title">
-                {modalType === 'vendor' && 'Hubungkan Vendor'}
-                {modalType === 'deadline' && 'Tambah Deadline'}
-                {modalType === 'payment' && 'Catat Pembayaran'}
-                {modalType === 'meeting' && 'Jadwalkan Meeting'}
-              </h3>
-              <button className="modal-close" onClick={handleCloseModal}><X size={20} /></button>
-            </div>
-            <form onSubmit={handleSubmit}>
-              <div className="modal-body">
+      <Modal 
+        isOpen={!!modalType}
+        onClose={handleCloseModal}
+        title={
+          modalType === 'vendor' ? 'Hubungkan Vendor' :
+          modalType === 'deadline' ? 'Tambah Deadline' :
+          modalType === 'payment' ? 'Catat Pembayaran' :
+          modalType === 'meeting' ? 'Jadwalkan Meeting' : ''
+        }
+      >
+        <form onSubmit={handleSubmit}>
+          <div className="modal-body">
                 {modalType === 'vendor' && (
                   <>
                     <div className="form-group">
@@ -357,15 +358,13 @@ export default function EventDetailPage() {
                   </>
                 )}
 
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>Batal</button>
-                <button type="submit" className="btn btn-primary">Simpan</button>
-              </div>
-            </form>
           </div>
-        </div>
-      )}
+          <div className="modal-footer">
+            <button type="button" className="btn btn-secondary" onClick={handleCloseModal}>Batal</button>
+            <button type="submit" className="btn btn-primary">Simpan</button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

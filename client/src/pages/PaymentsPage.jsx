@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
-import { formatCurrency, formatDate, statusLabels, statusBadgeClass, paymentTypeLabels } from '../services/helpers';
-import { Plus, X, CreditCard, TrendingUp, AlertTriangle, Clock } from 'lucide-react';
+import { formatCurrency, formatDate, paymentTypeLabels } from '../services/helpers';
+import { Plus, Search, CreditCard, TrendingUp, AlertTriangle, Clock } from 'lucide-react';
+import Modal from '../components/ui/Modal';
+import EmptyState from '../components/ui/EmptyState';
+import Badge from '../components/ui/Badge';
 
 export default function PaymentsPage() {
   const [payments, setPayments] = useState([]);
@@ -11,6 +14,7 @@ export default function PaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [editPayment, setEditPayment] = useState(null);
 
   const emptyForm = { event_id: '', vendor_id: '', amount: '', payment_date: '', payment_type: 'dp', payment_method: 'transfer', status: 'pending', invoice_number: '', notes: '' };
   const [form, setForm] = useState(emptyForm);
@@ -38,9 +42,17 @@ export default function PaymentsPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/api/payments', form);
-      setShowModal(false); setForm(emptyForm); fetchData();
+      if (editPayment) await api.put(`/api/payments/${editPayment.id}`, form);
+      else await api.post('/api/payments', form);
+      setShowModal(false); setForm(emptyForm); setEditPayment(null); fetchData();
     } catch (err) { alert(err.response?.data?.error || 'Gagal menyimpan'); }
+  };
+
+  const handleDelete = async (id) => {
+    if (confirm('Yakin ingin menghapus pembayaran ini?')) {
+      try { await api.delete(`/api/payments/${id}`); fetchData(); }
+      catch (err) { console.error(err); }
+    }
   };
 
   const updateStatus = async (id, status) => {
@@ -59,12 +71,11 @@ export default function PaymentsPage() {
           <h1 className="page-title">Pembayaran</h1>
           <p className="page-subtitle">Lacak semua pembayaran vendor dan klien</p>
         </div>
-        <button className="btn btn-primary" onClick={() => { setForm(emptyForm); setShowModal(true); }}>
+        <button className="btn btn-primary" onClick={() => { setEditPayment(null); setForm(emptyForm); setShowModal(true); }}>
           <Plus size={18} /> Catat Pembayaran
         </button>
       </div>
 
-      {/* Summary Cards */}
       {summary && (
         <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
           <div className="stat-card">
@@ -127,7 +138,7 @@ export default function PaymentsPage() {
             </thead>
             <tbody>
               {payments.map(p => (
-                <tr key={p.id}>
+                <tr key={p.id} onClick={() => { setEditPayment(p); setForm(p); setShowModal(true); }} style={{ cursor: 'pointer' }}>
                   <td style={{ fontWeight: 600, color: 'var(--accent-secondary)', fontSize: '0.8rem' }}>{p.invoice_number || '-'}</td>
                   <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{p.event_title}</td>
                   <td>{p.vendor_name || '-'}</td>
@@ -135,85 +146,87 @@ export default function PaymentsPage() {
                   <td><span className="badge badge-muted">{paymentTypeLabels[p.payment_type] || p.payment_type}</span></td>
                   <td style={{ textTransform: 'capitalize', fontSize: '0.8rem' }}>{p.payment_method || '-'}</td>
                   <td style={{ fontSize: '0.8rem' }}>{formatDate(p.payment_date)}</td>
-                  <td><span className={`badge ${statusBadgeClass(p.status)}`}>{statusLabels[p.status] || p.status}</span></td>
+                  <td><Badge status={p.status} /></td>
                   <td>
                     {p.status === 'pending' && (
-                      <button className="btn btn-primary btn-sm" onClick={() => updateStatus(p.id, 'paid')}>Lunas</button>
+                      <button className="btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); updateStatus(p.id, 'paid'); }}>Lunas</button>
                     )}
                   </td>
                 </tr>
               ))}
-              {payments.length === 0 && (
-                <tr><td colSpan={9} style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>Belum ada pembayaran</td></tr>
-              )}
             </tbody>
           </table>
+          {payments.length === 0 && (
+            <EmptyState 
+              icon={CreditCard} 
+              title="Tidak ada pembayaran" 
+              description="Belum ada transaksi pembayaran yang dicatat." 
+            />
+          )}
         </div>
       </div>
 
-      {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3 className="modal-title">Catat Pembayaran</h3>
-              <button className="modal-close" onClick={() => setShowModal(false)}><X size={20} /></button>
+      <Modal 
+        isOpen={showModal} 
+        onClose={() => setShowModal(false)} 
+        title={editPayment ? 'Edit Pembayaran' : 'Catat Pembayaran Baru'}
+      >
+        <form onSubmit={handleSubmit}>
+          <div className="modal-body">
+            <div className="form-group">
+              <label className="form-label">Event *</label>
+              <select className="form-input" value={form.event_id} onChange={e => setForm(p => ({...p, event_id: e.target.value}))} required>
+                <option value="">Pilih event</option>
+                {events.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
+              </select>
             </div>
-            <form onSubmit={handleSubmit}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label className="form-label">Event *</label>
-                  <select className="form-input" value={form.event_id} onChange={e => setForm(p => ({...p, event_id: e.target.value}))} required>
-                    <option value="">Pilih event</option>
-                    {events.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Vendor</label>
-                  <select className="form-input" value={form.vendor_id} onChange={e => setForm(p => ({...p, vendor_id: e.target.value}))}>
-                    <option value="">Pilih vendor (opsional)</option>
-                    {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-                  </select>
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="form-label">Jumlah (Rp) *</label>
-                    <input type="number" className="form-input" value={form.amount} onChange={e => setForm(p => ({...p, amount: e.target.value}))} required />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">No. Invoice</label>
-                    <input className="form-input" value={form.invoice_number} onChange={e => setForm(p => ({...p, invoice_number: e.target.value}))} />
-                  </div>
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="form-label">Tipe</label>
-                    <select className="form-input" value={form.payment_type} onChange={e => setForm(p => ({...p, payment_type: e.target.value}))}>
-                      {Object.entries(paymentTypeLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Metode</label>
-                    <select className="form-input" value={form.payment_method} onChange={e => setForm(p => ({...p, payment_method: e.target.value}))}>
-                      <option value="transfer">Transfer Bank</option>
-                      <option value="cash">Tunai</option>
-                      <option value="qris">QRIS</option>
-                      <option value="credit_card">Kartu Kredit</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Catatan</label>
-                  <textarea className="form-input" value={form.notes} onChange={e => setForm(p => ({...p, notes: e.target.value}))} rows={2} />
-                </div>
+            <div className="form-group">
+              <label className="form-label">Vendor</label>
+              <select className="form-input" value={form.vendor_id} onChange={e => setForm(p => ({...p, vendor_id: e.target.value}))}>
+                <option value="">Pilih vendor (opsional)</option>
+                {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+              </select>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Jumlah (Rp) *</label>
+                <input type="number" className="form-input" value={form.amount} onChange={e => setForm(p => ({...p, amount: e.target.value}))} required />
               </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Batal</button>
-                <button type="submit" className="btn btn-primary">Simpan</button>
+              <div className="form-group">
+                <label className="form-label">No. Invoice</label>
+                <input className="form-input" value={form.invoice_number} onChange={e => setForm(p => ({...p, invoice_number: e.target.value}))} />
               </div>
-            </form>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Tipe</label>
+                <select className="form-input" value={form.payment_type} onChange={e => setForm(p => ({...p, payment_type: e.target.value}))}>
+                  {Object.entries(paymentTypeLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Metode</label>
+                <select className="form-input" value={form.payment_method} onChange={e => setForm(p => ({...p, payment_method: e.target.value}))}>
+                  <option value="transfer">Transfer Bank</option>
+                  <option value="cash">Tunai</option>
+                  <option value="qris">QRIS</option>
+                  <option value="credit_card">Kartu Kredit</option>
+                </select>
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Catatan</label>
+              <textarea className="form-input" value={form.notes} onChange={e => setForm(p => ({...p, notes: e.target.value}))} rows={2} />
+            </div>
           </div>
-        </div>
-      )}
+          <div className="modal-footer">
+            {editPayment && <button type="button" className="btn btn-danger btn-sm" onClick={() => { handleDelete(editPayment.id); setShowModal(false); }}>Hapus</button>}
+            <div style={{ flex: 1 }} />
+            <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Batal</button>
+            <button type="submit" className="btn btn-primary">{editPayment ? 'Simpan' : 'Simpan Transaksi'}</button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
